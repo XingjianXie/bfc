@@ -64,14 +64,14 @@ struct buffer* bf_string_compile(struct bf_string *bf_str, size_t len) {
     // mov    x19, x0
     buffer_append4(buf, 0xf3, 0x03, 0x00, 0xaa);
 
-    // ldr x20, =putunsigned char
+    // ldr x20, =putchar
     void *putchar_p = putchar;
     buffer_append_d(buf, 0xd2800014 | (((unsigned short*)&putchar_p)[0] << 5));
     buffer_append_d(buf, 0xf2a00014 | (((unsigned short*)&putchar_p)[1] << 5));
     buffer_append_d(buf, 0xf2c00014 | (((unsigned short*)&putchar_p)[2] << 5));
     buffer_append_d(buf, 0xf2e00014 | (((unsigned short*)&putchar_p)[3] << 5));
 
-    // ldr x21, =getunsigned char
+    // ldr x21, =getchar
     void *getchar_p = getchar;
     buffer_append_d(buf, 0xd2800015 | (((unsigned short*)&getchar_p)[0] << 5));
     buffer_append_d(buf, 0xf2a00015 | (((unsigned short*)&getchar_p)[1] << 5));
@@ -143,7 +143,7 @@ struct buffer* bf_string_compile(struct bf_string *bf_str, size_t len) {
 
                 size_t size = stack_pop(s);
                 unsigned int dif = (unsigned int)(buf->size - size) / 4 + 1; // I don't like 32 bit offset, but this is the only thing we have
-                //prunsigned intf("%d\n", dif);
+                //printf("%d\n", dif);
                 *(unsigned int *)&(((unsigned char *)buf->ptr)[size - 4]) |= dif << 5; // Positive offset for jumping to ']'
                 unsigned int difX = -dif + 2;
                 *(unsigned int *)&(((unsigned char *)buf->ptr)[buf->size - 4]) |= ((difX & 0x7ffff) | 0x40000) << 5; // Negative offset for jumping to ']'
@@ -151,7 +151,7 @@ struct buffer* bf_string_compile(struct bf_string *bf_str, size_t len) {
                 break;
 
             default:
-                break; // Do nothing and skip any otherunsigned character
+                break; // Do nothing and skip any other character
         }
     }
     stack_free(s);
@@ -189,16 +189,16 @@ struct buffer* bf_string_compile(struct bf_string *bf_str, size_t len) {
     buffer_append2(buf, 0xff, 0xd1); // Call malloc
 
     // movq  %rax, %rbx
-    buffer_append3(buf, 0x48, 0x89, 0xc3); // use %rbx to store pounsigned inter,
+    buffer_append3(buf, 0x48, 0x89, 0xc3); // use %rbx to store pointer,
                                                                // preventing modify when calling other function
 
-    // movabsq putunsigned char, %r12
+    // movabsq pointer char, %r12
     buffer_append2(buf, 0x49, 0xbc);
-    buffer_append_ptr(buf, putchar); // Pass the address of putunsigned char to asm at runtime
+    buffer_append_ptr(buf, putchar); // Pass the address of putchar to asm at runtime
 
-    // movabsq getunsigned char, %r13
+    // movabsq pointer char, %r13
     buffer_append2(buf, 0x49, 0xbd);
-    buffer_append_ptr(buf, getchar); // Pass the address of getunsigned char to asm at runtime
+    buffer_append_ptr(buf, getchar); // Pass the address of getchar to asm at runtime
 
     // Brainfuck starts now
     struct stack *s = malloc(sizeof(struct stack)); // Stack to track '['
@@ -207,32 +207,32 @@ struct buffer* bf_string_compile(struct bf_string *bf_str, size_t len) {
         switch (bf_str->ptr[i]) {
             case '>':
                 // addq    $0x4, %rbx
-                buffer_append4(buf, 0x48, 0x83, 0xc3, 0x04); //Just increase the pounsigned inter
+                buffer_append4(buf, 0x48, 0x83, 0xc3, 0x04); //Just increase the pointer
                 break;
 
             case '<':
                 // addq    $-0x4, %rbx
-                buffer_append4(buf, 0x48, 0x83, 0xc3, 0xfc); // Just decrease the pounsigned inter
+                buffer_append4(buf, 0x48, 0x83, 0xc3, 0xfc); // Just decrease the pointer
                 break;
 
             case '+':
                 // addl    $0x1, (%rbx)
-                buffer_append3(buf, 0x83, 0x03, 0x01); // Increase the cell the pounsigned inter pounsigned inted to
+                buffer_append3(buf, 0x83, 0x03, 0x01); // Increase the cell the pointer pointed to
                 break;
             case '-':
                 // addl    $-0x1, (%rbx)
-                buffer_append3(buf, 0x83, 0x03, 0xff); // Decrease the cell the pounsigned inter pounsigned inted to
+                buffer_append3(buf, 0x83, 0x03, 0xff); // Decrease the cell the pointer pointed to
                 break;
             case '.':
                 // movl    (%rbx), %edi
-                buffer_append2(buf, 0x8b, 0x3b); // Pass to putunsigned char
+                buffer_append2(buf, 0x8b, 0x3b); // Pass to putchar
 
                 // callq    *%r12
-                buffer_append3(buf, 0x41, 0xff, 0xd4); // Call putunsigned char
+                buffer_append3(buf, 0x41, 0xff, 0xd4); // Call putchar
                 break;
             case ',':
                 // callq    *%r13
-                buffer_append3(buf, 0x41, 0xff, 0xd5); // Call getunsigned char
+                buffer_append3(buf, 0x41, 0xff, 0xd5); // Call getchar
 
                 // movl    %eax, (%rbx)
                 buffer_append2(buf, 0x89, 0x03); // Get the return value
